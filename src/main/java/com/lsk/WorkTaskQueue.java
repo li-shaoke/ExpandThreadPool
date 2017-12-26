@@ -20,6 +20,11 @@ public class WorkTaskQueue extends LinkedBlockingQueue<Runnable> {
         this.executor = executor;
     }
 
+    /**
+     * 将task加入队列中
+     * @param runnable
+     * @return
+     */
     public boolean forceTaskIntoQueue(Runnable runnable) {
         if (executor.isShutdown()) {
             throw new RejectedExecutionException("Executor已经关闭了,不能将task添加到队列里面");
@@ -36,16 +41,20 @@ public class WorkTaskQueue extends LinkedBlockingQueue<Runnable> {
     @Override
     public  boolean offer(Runnable runnable) {
         int currentPoolThreadSize = executor.getPoolSize();
-        //如果线程池里的线程数量已经到达最大,将任务添加到队列中
-        if (currentPoolThreadSize == executor.getMaximumPoolSize()) {
-            return super.offer(runnable);
-        }
-        //说明有空闲的线程,这个时候无需创建core线程之外的线程,而是把任务直接丢到队列里即可
-        if (executor.getCurrentTaskCount() < currentPoolThreadSize) {
+
+        /**
+         * 线程池里的线程数量已经到达最大,将任务添加到队列中
+         * 或
+         * 有空闲的线程,这个时候无需创建core线程之外的线程
+         */
+        if (currentPoolThreadSize == executor.getMaximumPoolSize() ||
+                executor.getCurrentTaskCount() < currentPoolThreadSize){
             return super.offer(runnable);
         }
 
-        //如果线程池里的线程数量还没有到达最大,直接创建线程,而不把任务丢到队列里面
+        /**
+         * 如果线程池里的线程数量还没有到达最大设定值,则直接创建线程,跳过把任务丢到队列里面
+         */
         if (currentPoolThreadSize < executor.getMaximumPoolSize()) {
             return false;
         }
